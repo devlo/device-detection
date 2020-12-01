@@ -22,8 +22,10 @@
  ********************************************************************** */
 
 #include <string>
+#include <cstring>
 #include <vector>
 #include <map>
+#include <stdlib.h>
 #include "51Degrees.h"
 
 #ifndef FIFTYONEDEGREESMATCH_HPP
@@ -33,11 +35,9 @@ using namespace std;
 
 /**
  * Encapsulates the results of device detection for given target HTTP headers.
- * A Match instance uses a C workset struct which has been set using either a
- * single User-Agent or a collection of HTTP headers. The workset is retained
- * by the Match instance until it is destroyed and the workset returned to the
- * pool held by the Provider. If a Match instance is not destroyed properly the
- * system will lock when the workset pool is exhausted.
+ * The class is constructed using an instance of device offsets which are then
+ * referenced to return associated values and metrics. The memory used by the
+ * offsets is released when the instance is destroyed.
  *
  * Match instances can only be created by a Provider.
  *
@@ -48,31 +48,46 @@ class Match {
 	friend class Provider;
 
 public:
-	Match();
+	Match(fiftyoneDegreesDeviceOffsets *offsets);
 	virtual ~Match();
 
-
 	vector<string> getValues(const char *propertyName);
-	vector<string> getValues(string &propertyName);
+	vector<string> getValues(const string &propertyName);
 	vector<string> getValues(int requiredPropertyIndex);
 
 	string getValue(const char *propertyName);
-	string getValue(string &propertyName);
+	string getValue(const string &propertyName);
 	string getValue(int requiredPropertyIndex);
+	
+	bool getValueAsBool(const char *propertyName);
+	bool getValueAsBool(const string &propertyName);
+	bool getValueAsBool(int requiredPropertyIndex);
+
+	int getValueAsInteger(const char *propertyName);
+	int getValueAsInteger(const string &propertyName);
+	int getValueAsInteger(int requiredPropertyIndex);
+
+	double getValueAsDouble(const char *propertyName);
+	double getValueAsDouble(const string &propertyName);
+	double getValueAsDouble(int requiredPropertyIndex);
 
 	string getDeviceId();
 	int getRank();
 	int getDifference();
 	int getMethod();
 	string getUserAgent();
-
+    
     // Manual dispose method for node.
     void close();
 
 protected:
 
 private:
-	fiftyoneDegreesWorkset *ws;
+
+	const char* getValuePointer(int requiredPropertyIndex);
+
+	fiftyoneDegreesDeviceOffsets *offsets;
+	string userAgent;
 };
 
 #endif // FIFTYONEDEGREESMATCH_HPP

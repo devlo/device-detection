@@ -26,22 +26,20 @@
  * code using SWIG.
  */
 
-%module "FiftyOneDegreesPatternV3"
+%module "FiftyOneDegreesTrieV3"
 %{
 	#include "Provider.hpp"
 	#include "Match.hpp"
-	#include "Profiles.hpp"
 
 	#ifdef SWIGPHP
 	Provider *provider;
 
 	PHP_INI_BEGIN()
-	PHP_INI_ENTRY("FiftyOneDegreesPatternV3.data_file", "/usr/lib/php5/51Degrees.dat", PHP_INI_ALL, NULL)
-	PHP_INI_ENTRY("FiftyOneDegreesPatternV3.pool_size", "10", PHP_INI_ALL, NULL)
-	PHP_INI_ENTRY("FiftyOneDegreesPatternV3.cache_size", "10000", PHP_INI_ALL, NULL)
-	PHP_INI_ENTRY("FiftyOneDegreesPatternV3.property_list", "", PHP_INI_ALL, NULL)
+	PHP_INI_ENTRY("FiftyOneDegreesTrieV3.data_file", "/usr/lib/php5/51Degrees.trie", PHP_INI_ALL, NULL)
+	PHP_INI_ENTRY("FiftyOneDegreesTrieV3.property_list", "", PHP_INI_ALL, NULL)
 	PHP_INI_END()
 	#endif
+
 %}
 
 /*
@@ -49,7 +47,7 @@
  * outside the main package directories, e.g. pattern/trie.
  *
  * If building the Swig wrapper for Go, insert code snippet at the beginning of 
- * the generated go file. This code imports the threading and cityhash sources 
+ * the generated go file. This code imports the threading and cache sources 
  * which are located outside of the pattern package directory. This allows Go 
  * Build access to the source code. Otherwise, as these paths are not copied to 
  * the temporary 'work' directory used by Go Build, the build will fail even 
@@ -68,7 +66,7 @@
 #cgo LDFLAGS: -lpthread
 #include <time.h>
 #include "../threading.c"
-#include "../cityhash/city.c"
+#include "../cache.c"
 */
 import "C"
 %}
@@ -134,9 +132,6 @@ import "C"
  */
 %nodefaultctor Match;
 %newobject Provider::getMatch;
-%newobject Provider::getMatchForDeviceId;
-%nodefaultctor Profiles;
-%newobject Provider::findProfiles;
 
 /*
  * Allow partial C# classes
@@ -153,41 +148,44 @@ Provider *provider;
 %minit {
 
 	REGISTER_INI_ENTRIES();
-	char *filePath = INI_STR("FiftyOneDegreesPatternV3.data_file");
-	int poolSize = INI_INT("FiftyOneDegreesPatternV3.pool_size");
-	int cacheSize = INI_INT("FiftyOneDegreesPatternV3.cache_size");
-	char *propertyList = INI_STR("FiftyOneDegreesPatternV3.property_list");
+	char *filePath = INI_STR("FiftyOneDegreesTrieV3.data_file");
+	char *propertyList = INI_STR("FiftyOneDegreesTrieV3.property_list");
 
-	provider = new Provider(filePath, propertyList, cacheSize, poolSize);
+	provider = new Provider(filePath, propertyList);
 }
 
 %mshutdown {
 
 	delete provider;
 }
-
-%rename(findProfilesInProfiles) findProfiles(const std::string propertyName, const std::string valueName, Profiles *profiles);
 #endif
 
 class Match {
 
-	public:
+    public:
 
 	virtual ~Match();
 
-	std::vector<std::string> getValues(const char *propertyName);
-	std::vector<std::string> getValues(std::string &propertyName);
-	std::vector<std::string> getValues(int propertyIndex);
+	std::vector<std::string> getValues(const std::string &propertyName);
+    std::vector<std::string> getValues(int propertyIndex);
 
-	std::string getValue(const char *propertyName);
-	std::string getValue(std::string &propertyName);
-	std::string getValue(int propertyIndex);
+	std::string getValue(const std::string &propertyName);
+    std::string getValue(int propertyIndex);
 
-	std::string getDeviceId();
-	int getRank();
-	int getDifference();
-	int getMethod();
-	std::string getUserAgent();
+	bool getValueAsBool(const std::string &propertyName);
+	bool getValueAsBool(int requiredPropertyIndex);
+
+	int getValueAsInteger(const std::string &propertyName);
+	int getValueAsInteger(int requiredPropertyIndex);
+
+	double getValueAsDouble(const std::string &propertyName);
+	double getValueAsDouble(int requiredPropertyIndex);
+	
+    std::string getDeviceId();
+    int getRank();
+    int getDifference();
+    int getMethod();
+    std::string getUserAgent();
     
     // Manual dispose method for node.
 #ifdef BUILDING_NODE_EXTENSION
@@ -195,17 +193,10 @@ class Match {
 #endif
 };
 
-class Profiles {
-
-public:
-	virtual ~Profiles();
-
-	Profiles();
-	int getCount();
-	int getProfileIndex(int index);
-	int getProfileId(int index);
-
-};
+#ifdef SWIGJAVA
+%apply (char *STRING, size_t LENGTH) { (const char userAgent[], size_t length) }
+%newobject Provider::getMatchForByteArray;
+#endif
 
 class Provider {
 
@@ -213,39 +204,37 @@ class Provider {
 
 	Provider(const std::string &fileName);
 	Provider(const std::string &fileName, const std::string &propertyString);
-	Provider(const std::string &fileName, const std::string &propertyString, int cacheSize, int poolSize);
 	Provider(const std::string &fileName, std::vector<std::string> &propertiesArray);
-	Provider(const std::string &fileName, std::vector<std::string> &propertiesArray, int cacheSize, int poolSize);
-	Provider(const std::string &fileName, int cacheSize, int poolSize);
 	virtual ~Provider();
 
-	std::vector<std::string> getHttpHeaders();
-	std::vector<std::string> getAvailableProperties();
-	std::string getDataSetName();
-	std::string getDataSetFormat();
-	std::string getDataSetPublishedDate();
-	std::string getDataSetNextUpdateDate();
-	int getDataSetSignatureCount();
-	int getDataSetDeviceCombinations();
+    std::vector<std::string> getHttpHeaders();
+    std::vector<std::string> getAvailableProperties();
+    std::string getDataSetName();
+    std::string getDataSetFormat();
+    std::string getDataSetPublishedDate();
+    std::string getDataSetNextUpdateDate();
+    int getDataSetSignatureCount();
+    int getDataSetDeviceCombinations();
 
 	Match* getMatch(const std::string &userAgent);
-	Match* getMatch(const std::map<std::string, std::string> &headers);
+#ifdef SWIGJAVA
+	Match* getMatchForByteArray(const char userAgent[], size_t length);
+#endif
+    Match* getMatch(const std::map<std::string, std::string> &headers);
+
+	Match* getMatchWithTolerances(const std::string &userAgent, int drift, int difference);
+    Match* getMatchWithTolerances(const std::map<std::string, std::string> &headers, int drift, int difference);
 
 	std::string getMatchJson(const std::string &userAgent);
-	std::string getMatchJson(const std::map<std::string, std::string> &headers);
+    std::string getMatchJson(const std::map<std::string, std::string> &headers);
 
-	Match* getMatchForDeviceId(const std::string &deviceId);
-	Profiles* findProfiles(const std::string propertyName, const std::string valueName);
-	Profiles* findProfiles(const std::string propertyName, const std::string valueName, Profiles *profiles);
+	void setDrift(int drift);
+    void setDifference(int difference);
 
 	void reloadFromFile();
-	void reloadFromMemory(const std::string &source, int length);
-
-	int getCacheHits();
-	int getCacheMisses();
-	int getCacheMaxIterations();
+	void reloadFromMemory(unsigned char source[], int size);
 
 	bool getIsThreadSafe();
 
-	Provider(const std::string &fileName, const std::string &propertyString, int cacheSize, int poolSize, bool validate);
+	Provider(const std::string &fileName, const std::string &propertyString, bool validate);
 };

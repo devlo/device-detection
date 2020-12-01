@@ -226,7 +226,6 @@ int fiftyoneDegreesSignalValid(fiftyoneDegreesSignal *signal);
 #endif
 
 #endif
-#endif
 
 #ifdef _MSC_VER
 #define FIFTYONEDEGREES_INTERLOCK_INC(v) _InterlockedIncrement(v)
@@ -273,7 +272,7 @@ int fiftyoneDegreesSignalValid(fiftyoneDegreesSignal *signal);
 #else
 /**
  * Implements the __sync_bool_compare_and_swap_16 function which is often not
- * implemtned by the compiler. This uses the cmpxchg16b instruction from the
+ * implemented by the compiler. This uses the cmpxchg16b instruction from the
  * x86-64 instruction set, the same instruction as the
  * InterlockedCompareExchange128 implementation
  * (see https://docs.microsoft.com/en-us/cpp/intrinsics/interlockedcompareexchange128?view=vs-2019#remarks).
@@ -313,4 +312,5 @@ __fod_sync_bool_compare_and_swap_16(
     (sizeof(void*) == 8 ? \
     __fod_sync_bool_compare_and_swap_16((void*)d, (void*)&e, (void*)&c) : \
     __sync_bool_compare_and_swap((long*)d, *((long*)&c), *((long*)&e)))
+#endif
 #endif
